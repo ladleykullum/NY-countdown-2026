@@ -14,4 +14,5 @@ window.INSULTS = [
   { name: 'Maggot skin' },
   { name: 'Leper' },
   { name: 'Flabber' },
+  { name: 'Weasel nipples' },
 ];
