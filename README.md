@@ -37,5 +37,6 @@ Click **Upload photos** and pick everyone's photos at once. Name each file after
 - Do the setup on the laptop you'll play from. Songs, photos and bracket progress are saved in that browser.
 - Names stay hidden during each matchup so votes are fair. You only see who picked a song once it's knocked out.
 - If you have an odd number of songs, the site will remind you to add one more. Bracket sizes of 4, 8, 16 or 32 give everyone a first-round match. Any other number gives a few random songs a free pass into round 2.
+- Every knocked-out person gets a random insult stamped on their photo (no repeats until they've all been used), plus a sad trombone. Edit the list in `insults.js`.
 - Made a mistake? **Undo last pick** steps back one result.
 - Some music videos don't allow playing on other sites. If one won't play, an **Open it on YouTube** link appears that starts at the right time.

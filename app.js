@@ -296,9 +296,25 @@
   }
   const champion = () => B().winners[rounds() - 1][0];
 
+  // Each loser gets a nickname from insults.js; all of them get used before any repeats.
+  function assignInsult(id) {
+    const b = B();
+    const list = window.INSULTS || [];
+    if (!id || !list.length) return;
+    b.insults = b.insults || {};
+    if (b.insults[id] != null) return;
+    if (!b.insultBag || !b.insultBag.length) b.insultBag = shuffle(list.map((_, k) => k));
+    b.insults[id] = b.insultBag.pop();
+  }
+  function insultOf(id) {
+    const k = B() && B().insults ? B().insults[id] : null;
+    return k == null ? null : (window.INSULTS || [])[k] || null;
+  }
+
   function pick(r, i, winnerId) {
     const [a, b] = slots(r, i);
     const loserId = winnerId === a ? b : a;
+    assignInsult(loserId);
     B().winners[r][i] = winnerId;
     B().history.push([r, i]);
     B().current = null;
@@ -525,7 +541,9 @@
     if (!w || isBye(r, i)) return `<div class="slot live" style="${vars}"><span class="dot"></span><span class="t">${esc(titleOf(e))}</span></div>`;
     if (w === id) return `<div class="slot win" style="${vars}"><span class="t">${esc(titleOf(e))}</span></div>`;
     const face = e.photo ? `<img class="mini-face" src="${e.photo}" alt="">` : '';
-    return `<div class="slot lose"><span class="t">${esc(titleOf(e))}</span><span class="who">${face}${esc(e.name)}</span></div>`;
+    const ins = insultOf(id);
+    const label = ins ? `<em>${esc(ins.name)}</em>` : esc(titleOf(e));
+    return `<div class="slot lose" title="${esc(titleOf(e))}"><span class="t">${label}</span><span class="who">${face}${esc(e.name)}</span></div>`;
   }
 
   // Bracket geometry, in px, matching the card sizes in style.css.
@@ -645,13 +663,58 @@
   function showEliminated(e, r, after) {
     if (!e) { if (after) after(); return; }
     const final = B().winners[r].length === 1;
+    const ins = insultOf(e.id);
     openOverlay(`
       <p class="ov-kicker">${final ? 'Runner-up' : 'Eliminated'}</p>
-      <div class="ov-photo">${faceHTML(e)}<span class="stamp">OUT</span></div>
+      <div class="ov-figure">
+        <div class="ov-photo">${faceHTML(e)}</div>
+        <span class="stamp${ins && ins.name.length > 9 ? ' long' : ''}">${esc(ins ? ins.name : 'OUT')}</span>
+      </div>
       <h2 class="ov-name" id="ov-name">${esc(e.name)}</h2>
       <p class="ov-song"><strong>${esc(titleOf(e))}</strong> goes out in the ${roundName(r).replace(/^The /, '')}.</p>
       <div class="btn-row"><button class="btn big" data-close type="button">${final ? 'Reveal the winner' : 'Next match'}</button></div>
     `, '', after, e.id);
+    sadTrombone();
+  }
+
+  // Wah wah wah waaah, made on the fly so there's no sound file to load.
+  function sadTrombone() {
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      const ctx = sadTrombone.ctx || (sadTrombone.ctx = new AC());
+      if (ctx.state === 'suspended') ctx.resume();
+      const notes = [[293.7, 0.45], [277.2, 0.45], [261.6, 0.45], [246.9, 1.4]];
+      let t = ctx.currentTime + 0.5;
+      notes.forEach(([f, len], k) => {
+        const osc = ctx.createOscillator();
+        const filter = ctx.createBiquadFilter();
+        const gain = ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(f, t);
+        if (k === notes.length - 1) {
+          const lfo = ctx.createOscillator();
+          const depth = ctx.createGain();
+          lfo.frequency.value = 6;
+          depth.gain.value = 6;
+          lfo.connect(depth).connect(osc.frequency);
+          lfo.start(t + 0.2);
+          lfo.stop(t + len);
+        }
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(700, t);
+        filter.frequency.linearRampToValueAtTime(1400, t + 0.12);
+        filter.frequency.linearRampToValueAtTime(600, t + len);
+        gain.gain.setValueAtTime(0.0001, t);
+        gain.gain.exponentialRampToValueAtTime(0.25, t + 0.05);
+        gain.gain.setValueAtTime(0.25, t + len - 0.12);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + len);
+        osc.connect(filter).connect(gain).connect(ctx.destination);
+        osc.start(t);
+        osc.stop(t + len + 0.05);
+        t += len;
+      });
+    } catch { /* no sound is fine */ }
   }
 
   function showChampion(e) {
