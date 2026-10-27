@@ -600,11 +600,12 @@
     $('#view-bracket').hidden = state.view !== 'bracket';
     const sub = $('#hero-sub');
     if (state.view === 'setup') {
-      sub.textContent = 'Everyone picks a song. The room votes. One anthem takes us into 2027.';
+      sub.hidden = true;
       renderSetup();
     } else {
       const n = B().seeds.filter(Boolean).length;
       const R = rounds();
+      sub.hidden = false;
       sub.textContent = `${n} songs. ${R} round${R === 1 ? '' : 's'}. One anthem for 2027.`;
       ensurePlayer();
       renderStage();
