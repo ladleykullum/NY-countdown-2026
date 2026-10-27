@@ -81,7 +81,7 @@
   };
   const ytLink = (e) => `https://www.youtube.com/watch?v=${e.videoId}${e.start ? `&t=${e.start}s` : ''}`;
   const titleOf = (e) => e.title || 'Untitled song';
-  const initials = (name) => (name || '?').trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || '?';
+  const initials = (name) => (name || '?').replace(/^Example:\s*/, '').trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || '?';
   const norm = (s) => String(s || '').toLowerCase().normalize('NFKD').replace(/[^a-z0-9]/g, '');
 
   function parseCSV(text) {
@@ -260,7 +260,9 @@
     const winners = [];
     for (let m = size / 2; m >= 1; m /= 2) winners.push(new Array(m).fill(null));
     pairs.forEach((p, i) => { if (p[1] === null) winners[0][i] = p[0]; });
-    state.bracket = { seeds: pairs.flat(), winners, history: [], current: null };
+    const colors = {};
+    ids.forEach((id, k) => { colors[id] = k; });
+    state.bracket = { seeds: pairs.flat(), winners, history: [], current: null, colors };
     state.view = 'bracket';
     save();
     render();
@@ -440,16 +442,31 @@
     if (state.sheetUrl && !$('#sheet-url').value) $('#sheet-url').value = state.sheetUrl;
   }
 
+  // Song colours, borrowed from the ribbons. Each song keeps its colour for the whole night.
+  const PALETTE = [
+    ['#4f5fff', '#ffffff'], ['#a27bff', '#0e0e10'], ['#ff5a36', '#0e0e10'], ['#c8f03c', '#0e0e10'],
+    ['#ffc21a', '#0e0e10'], ['#ff7ac3', '#0e0e10'], ['#5ec8ff', '#0e0e10'], ['#2fbf8f', '#0e0e10'],
+  ];
+  function colorOf(id) {
+    const b = B();
+    let k = b && b.colors ? b.colors[id] : undefined;
+    if (k == null) k = Math.max(0, state.entries.findIndex((e) => e.id === id));
+    return PALETTE[k % PALETTE.length];
+  }
+  const colorVars = (id) => { const [c, on] = colorOf(id); return `--c:${c};--on-c:${on}`; };
+
   function contenderHTML(e, side, r, i) {
     return `
-      <span class="side-tag">Song ${side}</span>
-      <img class="thumb" src="https://i.ytimg.com/vi/${e.videoId}/mqdefault.jpg" alt="">
-      <h3>${esc(titleOf(e))}</h3>
-      <span class="start-chip">starts at ${fmt(e.start)}</span>
-      <div class="actions">
-        <button class="btn ghost" data-play="${e.id}" type="button">▶ Play song ${side}</button>
-        <button class="btn" data-pick="${e.id}" data-r="${r}" data-i="${i}" type="button">Song ${side} wins</button>
-        <a class="yt" href="${ytLink(e)}" target="_blank" rel="noopener">Open on YouTube</a>
+      <div class="band"><span>Song ${side}</span><span class="eq" aria-hidden="true"><i></i><i></i><i></i></span></div>
+      <div class="body">
+        <img class="thumb" src="https://i.ytimg.com/vi/${e.videoId}/mqdefault.jpg" alt="">
+        <h3>${esc(titleOf(e))}</h3>
+        <span class="start-chip">Starts at <b>${fmt(e.start)}</b></span>
+        <div class="actions">
+          <button class="btn ghost" data-play="${e.id}" type="button">▶ Play song ${side}</button>
+          <button class="btn win" data-pick="${e.id}" data-r="${r}" data-i="${i}" type="button">Song ${side} wins</button>
+          <a class="yt" href="${ytLink(e)}" target="_blank" rel="noopener">Open on YouTube</a>
+        </div>
       </div>`;
   }
 
@@ -457,18 +474,22 @@
     const label = $('#round-label');
     const A = $('#side-a'), Bs = $('#side-b');
     const champ = champion();
+    $('.match-stage').classList.toggle('done', !!champ);
     if (champ) {
       const e = byId(champ);
       label.innerHTML = `<small>We have a winner</small>${esc(titleOf(e))}`;
       A.className = 'contender';
       A.dataset.id = e.id;
+      A.style.cssText = colorVars(e.id);
       A.innerHTML = `
-        <span class="side-tag">Champion</span>
-        <div class="face" style="width:120px;height:120px;align-self:center">${faceHTML(e)}</div>
-        <h3 style="text-align:center">${esc(e.name)}</h3>
-        <div class="actions">
-          <button class="btn" data-play="${e.id}" type="button">▶ Play the winner</button>
-          <button class="btn ghost" data-celebrate type="button">Show the winner again</button>
+        <div class="band"><span>Champion</span><span class="eq" aria-hidden="true"><i></i><i></i><i></i></span></div>
+        <div class="body">
+          <div class="face champ-face">${faceHTML(e)}</div>
+          <h3 class="champ-name">${esc(e.name)}</h3>
+          <div class="actions">
+            <button class="btn win" data-play="${e.id}" type="button">▶ Play the winner</button>
+            <button class="btn ghost" data-celebrate type="button">Show the winner again</button>
+          </div>
         </div>`;
       Bs.hidden = true;
       Bs.innerHTML = '';
@@ -481,10 +502,12 @@
     const [r, i] = cur;
     const [a, b] = slots(r, i).map(byId);
     const inRound = B().winners[r].map((_, j) => j).filter((j) => !isBye(r, j));
-    label.innerHTML = `<small>Match ${inRound.indexOf(i) + 1} of ${inRound.length}</small>${roundName(r)}`;
+    label.innerHTML = `<small>${roundName(r)} · Match ${inRound.indexOf(i) + 1} of ${inRound.length}</small>Song A vs Song B`;
     A.className = Bs.className = 'contender';
     A.dataset.id = a.id;
     Bs.dataset.id = b.id;
+    A.style.cssText = colorVars(a.id);
+    Bs.style.cssText = colorVars(b.id);
     A.innerHTML = contenderHTML(a, 'A', r, i);
     Bs.innerHTML = contenderHTML(b, 'B', r, i);
     markPlaying();
@@ -493,49 +516,100 @@
   function slotHTML(id, r, i) {
     const b = B();
     if (id == null) {
-      if (r === 0) return `<div class="slot bye">Free pass to next round</div>`;
-      return `<div class="slot tbd"><span class="t">Winner of previous match</span></div>`;
+      if (r === 0) return `<div class="slot bye">Free pass</div>`;
+      return `<div class="slot tbd"><span class="t">To be decided</span></div>`;
     }
     const e = byId(id);
     const w = b.winners[r][i];
-    const decided = w && !isBye(r, i);
-    if (!decided) return `<div class="slot"><span class="t">${esc(titleOf(e))}</span></div>`;
-    if (w === id) return `<div class="slot win"><span class="t">${esc(titleOf(e))}</span></div>`;
+    const vars = colorVars(id);
+    if (!w || isBye(r, i)) return `<div class="slot live" style="${vars}"><span class="dot"></span><span class="t">${esc(titleOf(e))}</span></div>`;
+    if (w === id) return `<div class="slot win" style="${vars}"><span class="t">${esc(titleOf(e))}</span></div>`;
     const face = e.photo ? `<img class="mini-face" src="${e.photo}" alt="">` : '';
-    return `<div class="slot lose">${face}<span class="t">${esc(titleOf(e))}</span><span class="who">${esc(e.name)}</span></div>`;
+    return `<div class="slot lose"><span class="t">${esc(titleOf(e))}</span><span class="who">${face}${esc(e.name)}</span></div>`;
   }
+
+  // Bracket geometry, in px, matching the card sizes in style.css.
+  const G = { w: 220, h: 96, col: 330, pitch: 168, top: 48, trophy: 180 };
 
   function renderBracket() {
     const b = B();
+    const R = rounds();
     const cur = currentMatch();
-    $('#bracket').innerHTML = b.winners.map((round, r) => `
-      <div class="round">
-        <h4>${roundName(r)}</h4>
-        <div class="round-matches">
-          ${round.map((_, i) => {
-            const [x, y] = slots(r, i);
-            const ready = isReady(r, i);
-            const isCur = cur && cur[0] === r && cur[1] === i;
-            const tag = ready ? 'button' : 'div';
-            const attrs = ready ? ` type="button" data-goto="${r},${i}" aria-label="Play this match"` : '';
-            return `<${tag} class="bm${isCur ? ' current' : ''}"${attrs}>${slotHTML(x, r, i)}${isBye(r, i) ? slotHTML(null, 0, i) : slotHTML(y, r, i)}</${tag}>`;
-          }).join('')}
-        </div>
-      </div>`).join('');
+    const ys = [b.winners[0].map((_, i) => i * G.pitch)];
+    for (let r = 1; r < R; r++) ys.push(b.winners[r].map((_, i) => (ys[r - 1][2 * i] + ys[r - 1][2 * i + 1]) / 2));
+    const height = G.top + (b.winners[0].length - 1) * G.pitch + G.h;
+    const trophyX = (R - 1) * G.col + G.w + 60;
+    const width = trophyX + G.trophy;
+    const finalMid = G.top + ys[R - 1][0] + G.h / 2;
+    const champ = champion();
+
+    const links = [];
+    const curve = (x1, y1, x2, y2, cls, vars) => {
+      const mx = (x1 + x2) / 2;
+      links.push(`<path class="${cls}" style="${vars}" d="M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}"/>`);
+    };
+    for (let r = 0; r < R - 1; r++) {
+      b.winners[r].forEach((w, i) => {
+        const top = G.top + ys[r][i];
+        const x1 = r * G.col + G.w, x2 = (r + 1) * G.col;
+        const y2 = G.top + ys[r + 1][i >> 1] + (i % 2 ? 72 : 24);
+        if (w) {
+          const y1 = top + (slots(r, i)[0] === w ? 24 : 72);
+          curve(x1, y1, x2, y2, 'won', `stroke:${colorOf(w)[0]}`);
+        } else curve(x1, top + G.h / 2, x2, y2, 'tbd', '');
+      });
+    }
+    curve((R - 1) * G.col + G.w, finalMid, trophyX, finalMid, champ ? 'won' : 'tbd', champ ? `stroke:${colorOf(champ)[0]}` : '');
+
+    const titles = b.winners.map((_, r) => `<div class="round-title" style="left:${r * G.col}px">${roundName(r).replace(/^The /, '')}</div>`).join('');
+    const cards = b.winners.map((round, r) => round.map((_, i) => {
+      const [x, y] = slots(r, i);
+      const ready = isReady(r, i);
+      const isCur = cur && cur[0] === r && cur[1] === i;
+      const pending = x == null && y == null;
+      const tag = ready ? 'button' : 'div';
+      const attrs = ready ? ` type="button" data-goto="${r},${i}" aria-label="Play this match"` : '';
+      const cls = `bm${isCur ? ' current' : ''}${pending ? ' pending' : ''}`;
+      const pos = `left:${r * G.col}px;top:${G.top + ys[r][i]}px`;
+      return `<${tag} class="${cls}" style="${pos}"${attrs}>${slotHTML(x, r, i)}${slotHTML(isBye(r, i) ? null : y, isBye(r, i) ? 0 : r, i)}</${tag}>`;
+    }).join('')).join('');
+
+    const ce = champ && byId(champ);
+    const trophy = `
+      <div class="trophy${ce ? ' won' : ''}" style="left:${trophyX}px;top:${finalMid - G.trophy / 2}px;${ce ? colorVars(ce.id) : ''}">
+        ${ce ? (ce.photo ? `<img src="${ce.photo}" alt="${esc(ce.name)}">` : `<div class="initials">${esc(initials(ce.name))}</div>`) : 'Champion'}
+      </div>
+      ${ce ? `<div class="trophy-cap" style="left:${trophyX}px;top:${finalMid + G.trophy / 2 + 18}px">${esc(ce.name)}</div>` : ''}`;
+
+    const el = $('#bracket');
+    el.style.width = width + 'px';
+    el.style.height = height + (ce ? 40 : 0) + 'px';
+    el.innerHTML = `<svg class="links" width="${width}" height="${height}" aria-hidden="true">${links.join('')}</svg>${titles}${cards}${trophy}`;
     $('#undo').disabled = !b.history.length;
   }
 
   function render() {
     const hasBracket = !!state.bracket;
     if (!hasBracket && state.view === 'bracket') state.view = 'setup';
+    document.body.classList.toggle('playing-view', state.view === 'bracket');
     document.querySelectorAll('.tab').forEach((t) => {
       t.setAttribute('aria-current', t.dataset.view === state.view ? 'page' : 'false');
       if (t.dataset.view === 'bracket') t.disabled = !hasBracket;
     });
     $('#view-setup').hidden = state.view !== 'setup';
     $('#view-bracket').hidden = state.view !== 'bracket';
-    if (state.view === 'setup') renderSetup();
-    else { ensurePlayer(); renderStage(); renderBracket(); }
+    const sub = $('#hero-sub');
+    if (state.view === 'setup') {
+      sub.textContent = 'Everyone picks a song. The room votes. One anthem takes us into 2027.';
+      renderSetup();
+    } else {
+      const n = B().seeds.filter(Boolean).length;
+      const R = rounds();
+      sub.textContent = `${n} songs. ${R} round${R === 1 ? '' : 's'}. One anthem for 2027.`;
+      ensurePlayer();
+      renderStage();
+      renderBracket();
+    }
   }
 
   function afterEntriesChanged() {
@@ -550,8 +624,9 @@
   const card = $('#overlay-card');
   let onClose = null;
 
-  function openOverlay(html, cls, after) {
+  function openOverlay(html, cls, after, id) {
     card.className = 'ov-card ' + (cls || '');
+    card.style.cssText = id ? colorVars(id) : '';
     card.innerHTML = html;
     overlay.hidden = false;
     onClose = after || null;
@@ -575,7 +650,7 @@
       <h2 class="ov-name" id="ov-name">${esc(e.name)}</h2>
       <p class="ov-song"><strong>${esc(titleOf(e))}</strong> goes out in the ${roundName(r).replace(/^The /, '')}.</p>
       <div class="btn-row"><button class="btn big" data-close type="button">${final ? 'Reveal the winner' : 'Next match'}</button></div>
-    `, '', after);
+    `, '', after, e.id);
   }
 
   function showChampion(e) {
@@ -589,7 +664,7 @@
         <button class="btn big" data-close data-play-after="${e.id}" type="button">▶ Play it</button>
         <button class="btn ghost" data-close type="button">Close</button>
       </div>
-    `, 'champ');
+    `, 'champ', null, e.id);
     startConfetti();
   }
 
@@ -602,7 +677,7 @@
     const dpr = window.devicePixelRatio || 1;
     c.width = innerWidth * dpr;
     c.height = innerHeight * dpr;
-    const colors = ['#f7c85a', '#fff1c7', '#ff4a7d', '#b9c2ff', '#ffffff'];
+    const colors = PALETTE.map((p) => p[0]).concat('#0e0e10');
     const bits = Array.from({ length: 180 }, () => ({
       x: Math.random() * c.width, y: -Math.random() * c.height,
       w: (4 + Math.random() * 6) * dpr, h: (8 + Math.random() * 10) * dpr,

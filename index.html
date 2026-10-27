@@ -6,23 +6,41 @@
 <title>NYE Song Countdown</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bowlby+One&family=Figtree:wght@400;600;800&family=JetBrains+Mono:wght@500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=DM+Sans:wght@400;500;700&display=swap">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <header class="top">
-  <div class="brand">NYE <em>Song</em> Countdown</div>
+  <div class="brand">
+    <svg width="40" height="24" viewBox="0 0 40 24" aria-hidden="true"><path d="M2,18 C10,2 18,2 20,12 S30,22 38,6"/></svg>
+    Countdown
+  </div>
   <nav class="tabs" aria-label="Sections">
-    <button class="tab" data-view="setup" type="button">1 · Songs &amp; people</button>
-    <button class="tab" data-view="bracket" type="button">2 · The bracket</button>
+    <button class="tab" data-view="setup" type="button">Songs</button>
+    <button class="tab" data-view="bracket" type="button">Bracket</button>
   </nav>
 </header>
+
+<section class="hero">
+  <p class="eyebrow">New Year's Eve · 2026</p>
+  <h1>Song <br>Countdown</h1>
+  <p id="hero-sub" class="hero-sub">Everyone picks a song. The room votes. One anthem takes us into 2027.</p>
+</section>
+
+<div class="ribbons" aria-hidden="true">
+  <svg viewBox="0 0 1440 220" preserveAspectRatio="none">
+    <path d="M-20,150 C220,10 420,10 640,110 S1060,230 1460,60" stroke="#ffc21a"/>
+    <path d="M-20,120 C200,0 440,40 660,130 S1080,210 1460,90" stroke="#ff5a36"/>
+    <path d="M-20,170 C260,40 420,70 680,150 S1100,190 1460,120" stroke="#a27bff"/>
+    <path d="M-20,200 C240,90 440,110 700,170 S1120,180 1460,150" stroke="#4f5fff"/>
+  </svg>
+</div>
 
 <main>
   <!-- SETUP -->
   <section id="view-setup" class="view">
-    <div class="import panel">
-      <h2>Bring in the Google Form answers</h2>
+    <div class="import card">
+      <h2>Bring in the answers</h2>
       <p class="hint">Paste the sheet's <strong>Publish to web → CSV</strong> link, or upload the CSV you downloaded from the responses sheet. Loading again later adds new answers and keeps any photos you've added.</p>
       <div class="url-row">
         <input id="sheet-url" type="url" placeholder="https://docs.google.com/spreadsheets/d/e/…/pub?output=csv" aria-label="Published CSV link">
@@ -42,7 +60,7 @@
 
     <div id="entry-list" class="entries"></div>
 
-    <div class="setup-foot panel">
+    <div class="setup-foot card">
       <p id="count-msg" class="count-msg"></p>
       <button id="draw" class="btn big" type="button">Shuffle &amp; draw the bracket</button>
     </div>
@@ -66,7 +84,7 @@
     </div>
 
     <div class="bracket-head">
-      <h2>The bracket</h2>
+      <h2 class="road">Road to the final</h2>
       <div class="btn-row">
         <button id="undo" class="btn ghost" type="button">Undo last pick</button>
         <button id="reshuffle" class="btn ghost" type="button">Reshuffle</button>
@@ -75,6 +93,13 @@
     <div class="bracket-scroll"><div id="bracket" class="bracket"></div></div>
   </section>
 </main>
+
+<footer class="foot">
+  <div class="foot-in">
+    <span>New Year's Eve · 2026</span>
+    <span>Names stay hidden until a song is knocked out</span>
+  </div>
+</footer>
 
 <div id="overlay" class="overlay" hidden>
   <canvas id="confetti" aria-hidden="true"></canvas>
