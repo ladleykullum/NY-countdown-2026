@@ -18,4 +18,7 @@ window.INSULTS = [
   { name: 'Moose knuckle' },
   { name: 'Gooch sniffer' },
   { name: 'Camel toe' },
+  { name: 'Sweaty taint' },
+  { name: 'Fungus foot' },
+  { name: 'Skid mark' },
 ];
